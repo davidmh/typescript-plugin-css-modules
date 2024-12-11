@@ -12,6 +12,14 @@ import { createLogger } from './helpers/logger';
 import { getProcessor } from './helpers/getProcessor';
 import { filterPlugins } from './helpers/filterPlugins';
 
+const CACHE_BY_LAST_WRITE = new Map<
+  string,
+  {
+    time: number;
+    snapshot: tsModule.IScriptSnapshot;
+  }
+>();
+
 const getPostCssConfigPlugins = (directory: string) => {
   try {
     return postcssrc.sync({}, directory).plugins;
@@ -133,7 +141,16 @@ const init: tsModule.server.PluginModuleFactory = ({ typescript: ts }) => {
 
     languageServiceHost.getScriptSnapshot = (fileName) => {
       if (isCSS(fileName) && fs.existsSync(fileName)) {
-        return getDtsSnapshot(
+        let lastWriteTimeMs = 0;
+        if (options.caching === 'mtime') {
+          const cached = CACHE_BY_LAST_WRITE.get(fileName);
+          lastWriteTimeMs = fs.statSync(fileName).mtimeMs;
+          if (cached && lastWriteTimeMs === cached.time) {
+            return cached.snapshot;
+          }
+        }
+
+        const snapshot = getDtsSnapshot(
           ts,
           processor,
           fileName,
@@ -142,6 +159,15 @@ const init: tsModule.server.PluginModuleFactory = ({ typescript: ts }) => {
           compilerOptions,
           directory,
         );
+
+        if (options.caching === 'mtime') {
+          CACHE_BY_LAST_WRITE.set(fileName, {
+            time: lastWriteTimeMs,
+            snapshot,
+          });
+        }
+
+        return snapshot;
       }
       return info.languageServiceHost.getScriptSnapshot(fileName);
     };

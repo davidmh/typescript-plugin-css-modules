@@ -20,6 +20,8 @@ export interface RendererOptions {
   stylus?: Partial<StylusRenderOptions>;
 }
 
+export type CachingOption = 'never' | 'mtime';
+
 export interface Options {
   additionalData?: string;
   allowUnknownClassnames?: boolean;
@@ -32,6 +34,7 @@ export interface Options {
   namedExports?: boolean;
   noUncheckedIndexedAccess?: boolean;
   postcssOptions?: PostcssOptions;
+  caching?: CachingOption;
   /** @deprecated To align with naming in other projects. */
   postCssOptions?: PostcssOptions;
   rendererOptions?: RendererOptions;
